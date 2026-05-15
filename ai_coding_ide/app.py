@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
 import tkinter as tk
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
@@ -34,10 +34,6 @@ class AICodingIDE:
         buttons = (
             ("Open Folder", self.open_folder),
             ("Open File", self.open_file_dialog),
-            ("New File", self.create_file),
-            ("New Folder", self.create_folder),
-            ("Rename", self.rename_selected_item),
-            ("Delete", self.delete_selected_item),
             ("Save", self.save_current_file),
             ("Close File", self.close_current_file),
         )
@@ -57,6 +53,8 @@ class AICodingIDE:
         self.tree.pack(fill="both", expand=True)
         self.tree.bind("<Double-1>", self.open_selected_file)
         self.file_tree = FileTree(self.tree)
+        self.create_file_tree_context_menu()
+        self.tree.bind("<Button-3>", self.show_file_tree_context_menu)
 
         self.right_side = ttk.PanedWindow(self.main_pane, orient=tk.VERTICAL)
         self.main_pane.add(self.right_side, weight=4)
@@ -80,10 +78,6 @@ class AICodingIDE:
         file_menu = self.create_dark_menu(menubar)
         file_menu.add_command(label="Open Folder", command=self.open_folder)
         file_menu.add_command(label="Open File", command=self.open_file_dialog)
-        file_menu.add_command(label="New File", command=self.create_file)
-        file_menu.add_command(label="New Folder", command=self.create_folder)
-        file_menu.add_command(label="Rename", command=self.rename_selected_item)
-        file_menu.add_command(label="Delete", command=self.delete_selected_item)
         file_menu.add_command(label="Save", command=self.save_current_file)
         file_menu.add_command(label="Close File", command=self.close_current_file)
         file_menu.add_separator()
@@ -107,6 +101,50 @@ class AICodingIDE:
             activeforeground="white",
             borderwidth=0,
         )
+
+    def create_file_tree_context_menu(self) -> None:
+        self.file_tree_menu_indexes = {
+            "open": 0,
+            "rename": 5,
+            "delete": 6,
+        }
+        self.file_tree_menu = self.create_dark_menu(self.root)
+        self.file_tree_menu.add_command(label="Open", command=self.open_selected_file)
+        self.file_tree_menu.add_separator()
+        self.file_tree_menu.add_command(label="New File", command=self.create_file)
+        self.file_tree_menu.add_command(label="New Folder", command=self.create_folder)
+        self.file_tree_menu.add_separator()
+        self.file_tree_menu.add_command(label="Rename", command=self.rename_selected_item)
+        self.file_tree_menu.add_command(label="Delete", command=self.delete_selected_item)
+
+    def show_file_tree_context_menu(self, event: tk.Event) -> None:
+        item_id = self.tree.identify_row(event.y)
+        if not item_id:
+            return
+
+        self.tree.selection_set(item_id)
+        selected_path = self.file_tree.selected_item_path()
+        if not selected_path:
+            return
+
+        can_open = selected_path.is_file()
+        can_modify = selected_path != self.file_tree.root_path
+
+        self.file_tree_menu.entryconfigure(
+            self.file_tree_menu_indexes["open"],
+            state="normal" if can_open else "disabled",
+        )
+        self.file_tree_menu.entryconfigure(
+            self.file_tree_menu_indexes["rename"],
+            state="normal" if can_modify else "disabled",
+        )
+        self.file_tree_menu.entryconfigure(
+            self.file_tree_menu_indexes["delete"],
+            state="normal" if can_modify else "disabled",
+        )
+
+        self.file_tree_menu.tk_popup(event.x_root, event.y_root)
+        self.file_tree_menu.grab_release()
 
     def open_folder(self) -> None:
         folder = filedialog.askdirectory()
