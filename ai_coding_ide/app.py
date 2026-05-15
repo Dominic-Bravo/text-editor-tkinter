@@ -289,7 +289,11 @@ class AICodingIDE:
         return name.strip() == name and name not in {"", ".", ".."} and "/" not in name and "\\" not in name
 
     def open_file(self, filepath: str | Path) -> None:
-        path = Path(filepath)
+        path = Path(filepath).resolve()
+
+        if self.select_open_editor(path):
+            self.terminal.write(f"Focused: {path}\n")
+            return
 
         try:
             content = path.read_text(encoding="utf-8")
@@ -302,6 +306,15 @@ class AICodingIDE:
         self.notebook.add(editor, text=editor.display_name)
         self.notebook.select(editor)
         self.terminal.write(f"Opened: {path}\n")
+
+    def select_open_editor(self, filepath: Path) -> bool:
+        for editor in self.get_open_editors():
+            if editor.filepath and editor.filepath.resolve() == filepath:
+                self.notebook.select(editor)
+                editor.text.focus_set()
+                return True
+
+        return False
 
     def get_current_editor(self) -> CodeEditor | None:
         current = self.notebook.select()
@@ -320,7 +333,7 @@ class AICodingIDE:
             filepath = filedialog.asksaveasfilename(filetypes=PYTHON_FILE_TYPES)
             if not filepath:
                 return False
-            editor.filepath = Path(filepath)
+            editor.filepath = Path(filepath).resolve()
 
         try:
             editor.filepath.write_text(editor.get_content(), encoding="utf-8")
@@ -348,9 +361,9 @@ class AICodingIDE:
                 continue
 
             if editor.filepath == old_path:
-                editor.filepath = new_path
+                editor.filepath = new_path.resolve()
             elif self.is_inside_path(editor.filepath, old_path):
-                editor.filepath = new_path / editor.filepath.relative_to(old_path)
+                editor.filepath = (new_path / editor.filepath.relative_to(old_path)).resolve()
             else:
                 continue
 

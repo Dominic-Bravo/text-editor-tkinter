@@ -16,7 +16,7 @@ INDENT = "    "
 class CodeEditor(ttk.Frame):
     def __init__(self, parent, filepath: str | Path | None = None):
         super().__init__(parent)
-        self.filepath = Path(filepath) if filepath else None
+        self.filepath = Path(filepath).resolve() if filepath else None
 
         self.line_numbers = tk.Text(
             self,
