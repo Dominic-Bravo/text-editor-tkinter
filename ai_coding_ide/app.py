@@ -10,7 +10,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .config import APP_TITLE, PYTHON_FILE_TYPES, WINDOW_SIZE
 from .file_tree import FileTree
-from .theme import apply_theme
+from .theme import COLORS, apply_theme
 from .widgets.code_editor import CodeEditor
 from .widgets.terminal import TerminalFrame
 
@@ -21,7 +21,7 @@ class AICodingIDE:
         self.root.title(APP_TITLE)
         self.root.geometry(WINDOW_SIZE)
 
-        apply_theme()
+        apply_theme(self.root)
         self.create_layout()
         self.create_menu()
 
@@ -29,7 +29,7 @@ class AICodingIDE:
         self.main_pane = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         self.main_pane.pack(fill="both", expand=True)
 
-        self.sidebar = ttk.Frame(self.main_pane, width=300)
+        self.sidebar = ttk.Frame(self.main_pane, width=300, style="Dark.TFrame")
         self.main_pane.add(self.sidebar, weight=1)
 
         self.tree = ttk.Treeview(self.sidebar)
@@ -47,9 +47,16 @@ class AICodingIDE:
         self.right_side.add(self.terminal, weight=1)
 
     def create_menu(self) -> None:
-        menubar = tk.Menu(self.root)
+        menubar = tk.Menu(
+            self.root,
+            background=COLORS["tab_background"],
+            foreground="white",
+            activebackground=COLORS["active"],
+            activeforeground="white",
+            borderwidth=0,
+        )
 
-        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu = self.create_dark_menu(menubar)
         file_menu.add_command(label="Open Folder", command=self.open_folder)
         file_menu.add_command(label="Open File", command=self.open_file_dialog)
         file_menu.add_command(label="New File", command=self.new_file)
@@ -58,12 +65,23 @@ class AICodingIDE:
         file_menu.add_command(label="Exit", command=self.root.quit)
         menubar.add_cascade(label="File", menu=file_menu)
 
-        run_menu = tk.Menu(menubar, tearoff=0)
+        run_menu = self.create_dark_menu(menubar)
         run_menu.add_command(label="Run Python File", command=self.run_current_file)
         run_menu.add_command(label="Clear Terminal", command=self.terminal.clear)
         menubar.add_cascade(label="Run", menu=run_menu)
 
         self.root.config(menu=menubar)
+
+    def create_dark_menu(self, parent: tk.Menu) -> tk.Menu:
+        return tk.Menu(
+            parent,
+            tearoff=0,
+            background=COLORS["tab_background"],
+            foreground="white",
+            activebackground=COLORS["active"],
+            activeforeground="white",
+            borderwidth=0,
+        )
 
     def open_folder(self) -> None:
         folder = filedialog.askdirectory()
