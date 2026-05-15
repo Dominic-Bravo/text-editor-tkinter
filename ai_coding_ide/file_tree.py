@@ -38,6 +38,17 @@ class FileTree:
 
         return Path(values[0])
 
+    def selected_item_path(self) -> Path | None:
+        selected = self.tree.selection()
+        if not selected:
+            return None
+
+        values = self.tree.item(selected[0], "values")
+        if not values:
+            return None
+
+        return Path(values[0])
+
     def selected_directory(self) -> Path | None:
         selected_path = self.selected_path()
         if not selected_path:

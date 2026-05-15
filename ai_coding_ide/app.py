@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import tkinter as tk
+import shutil
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
@@ -35,6 +36,8 @@ class AICodingIDE:
             ("Open File", self.open_file_dialog),
             ("New File", self.create_file),
             ("New Folder", self.create_folder),
+            ("Rename", self.rename_selected_item),
+            ("Delete", self.delete_selected_item),
             ("Save", self.save_current_file),
             ("Close File", self.close_current_file),
         )
@@ -79,6 +82,8 @@ class AICodingIDE:
         file_menu.add_command(label="Open File", command=self.open_file_dialog)
         file_menu.add_command(label="New File", command=self.create_file)
         file_menu.add_command(label="New Folder", command=self.create_folder)
+        file_menu.add_command(label="Rename", command=self.rename_selected_item)
+        file_menu.add_command(label="Delete", command=self.delete_selected_item)
         file_menu.add_command(label="Save", command=self.save_current_file)
         file_menu.add_command(label="Close File", command=self.close_current_file)
         file_menu.add_separator()
@@ -172,6 +177,79 @@ class AICodingIDE:
         self.file_tree.refresh()
         self.terminal.write(f"Created folder: {folder_path}\n")
 
+    def rename_selected_item(self) -> None:
+        selected_path = self.get_selected_project_item("rename")
+        if not selected_path:
+            return
+
+        new_name = simpledialog.askstring(
+            "Rename",
+            "New name:",
+            initialvalue=selected_path.name,
+        )
+        if not new_name or new_name == selected_path.name:
+            return
+
+        if not self.is_valid_item_name(new_name):
+            messagebox.showwarning("Warning", "Use a simple file or folder name.")
+            return
+
+        new_path = selected_path.with_name(new_name)
+        if new_path.exists():
+            messagebox.showwarning("Warning", "A file or folder with that name already exists.")
+            return
+
+        try:
+            selected_path.rename(new_path)
+        except OSError as error:
+            messagebox.showerror("Error", str(error))
+            return
+
+        self.update_open_editor_paths(selected_path, new_path)
+        self.file_tree.refresh()
+        self.terminal.write(f"Renamed: {selected_path} -> {new_path}\n")
+
+    def delete_selected_item(self) -> None:
+        selected_path = self.get_selected_project_item("delete")
+        if not selected_path:
+            return
+
+        item_type = "folder" if selected_path.is_dir() else "file"
+        confirmed = messagebox.askyesno(
+            "Confirm Delete",
+            f"Delete this {item_type}?\n\n{selected_path}",
+        )
+        if not confirmed:
+            return
+
+        try:
+            if selected_path.is_dir():
+                shutil.rmtree(selected_path)
+            else:
+                selected_path.unlink()
+        except OSError as error:
+            messagebox.showerror("Error", str(error))
+            return
+
+        self.close_editors_for_path(selected_path)
+        self.file_tree.refresh()
+        self.terminal.write(f"Deleted {item_type}: {selected_path}\n")
+
+    def get_selected_project_item(self, action: str) -> Path | None:
+        selected_path = self.file_tree.selected_item_path()
+        if not selected_path:
+            messagebox.showwarning("Warning", f"Select a file or folder to {action}.")
+            return None
+
+        if selected_path == self.file_tree.root_path:
+            messagebox.showwarning("Warning", f"Cannot {action} the opened project root.")
+            return None
+
+        return selected_path
+
+    def is_valid_item_name(self, name: str) -> bool:
+        return name.strip() == name and name not in {"", ".", ".."} and "/" not in name and "\\" not in name
+
     def open_file(self, filepath: str | Path) -> None:
         path = Path(filepath)
 
@@ -225,6 +303,45 @@ class AICodingIDE:
         display_name = editor.display_name if editor else "file"
         self.notebook.forget(current)
         self.terminal.write(f"Closed: {display_name}\n")
+
+    def update_open_editor_paths(self, old_path: Path, new_path: Path) -> None:
+        for editor in self.get_open_editors():
+            if not editor.filepath:
+                continue
+
+            if editor.filepath == old_path:
+                editor.filepath = new_path
+            elif self.is_inside_path(editor.filepath, old_path):
+                editor.filepath = new_path / editor.filepath.relative_to(old_path)
+            else:
+                continue
+
+            self.notebook.tab(editor, text=editor.display_name)
+
+    def close_editors_for_path(self, deleted_path: Path) -> None:
+        for editor in self.get_open_editors():
+            if not editor.filepath:
+                continue
+
+            if editor.filepath == deleted_path or self.is_inside_path(editor.filepath, deleted_path):
+                self.notebook.forget(editor)
+
+    def get_open_editors(self) -> list[CodeEditor]:
+        editors = []
+        for tab_id in self.notebook.tabs():
+            widget = self.notebook.nametowidget(tab_id)
+            if isinstance(widget, CodeEditor):
+                editors.append(widget)
+
+        return editors
+
+    def is_inside_path(self, path: Path, parent: Path) -> bool:
+        try:
+            path.relative_to(parent)
+        except ValueError:
+            return False
+
+        return path != parent
 
     def run_current_file(self) -> None:
         editor = self.get_current_editor()
