@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import font
 from pathlib import Path
 from tkinter import ttk
 
 from ..syntax import configure_python_tags, highlight_python
 from ..theme import COLORS, EDITOR_FONT
+
+INDENT = "    "
 
 
 class CodeEditor(ttk.Frame):
@@ -41,6 +44,7 @@ class CodeEditor(ttk.Frame):
             pady=10,
         )
         self.text.pack(side="left", fill="both", expand=True)
+        self.configure_tab_width()
 
         y_scroll = ttk.Scrollbar(self, orient="vertical", command=self.sync_vertical_scroll)
         y_scroll.pack(side="right", fill="y")
@@ -52,6 +56,8 @@ class CodeEditor(ttk.Frame):
         configure_python_tags(self.text)
 
         self.text.bind("<KeyRelease>", self.on_content_changed)
+        self.text.bind("<Tab>", self.indent_selection_or_line)
+        self.text.bind("<Shift-Tab>", self.unindent_selection_or_line)
         self.text.bind("<MouseWheel>", self.update_line_numbers)
         self.text.bind("<ButtonRelease-1>", self.update_line_numbers)
 
@@ -66,6 +72,50 @@ class CodeEditor(ttk.Frame):
     def on_content_changed(self, event=None) -> None:
         self.update_line_numbers()
         self.highlight_syntax()
+
+    def configure_tab_width(self) -> None:
+        editor_font = font.Font(font=EDITOR_FONT)
+        self.text.configure(tabs=(editor_font.measure(INDENT),))
+
+    def indent_selection_or_line(self, event=None) -> str:
+        start_line, end_line = self.get_selected_line_range()
+
+        for line_number in range(start_line, end_line + 1):
+            self.text.insert(f"{line_number}.0", INDENT)
+
+        self.on_content_changed()
+        return "break"
+
+    def unindent_selection_or_line(self, event=None) -> str:
+        start_line, end_line = self.get_selected_line_range()
+
+        for line_number in range(start_line, end_line + 1):
+            line_start = f"{line_number}.0"
+            line_prefix = self.text.get(line_start, f"{line_start}+{len(INDENT)}c")
+
+            if line_prefix.startswith(INDENT):
+                self.text.delete(line_start, f"{line_start}+{len(INDENT)}c")
+            elif line_prefix.startswith("\t"):
+                self.text.delete(line_start, f"{line_start}+1c")
+
+        self.on_content_changed()
+        return "break"
+
+    def get_selected_line_range(self) -> tuple[int, int]:
+        try:
+            start = self.text.index("sel.first")
+            end = self.text.index("sel.last")
+        except tk.TclError:
+            current_line = int(self.text.index("insert").split(".")[0])
+            return current_line, current_line
+
+        start_line = int(start.split(".")[0])
+        end_line, end_column = (int(part) for part in end.split("."))
+
+        if end_column == 0 and end_line > start_line:
+            end_line -= 1
+
+        return start_line, end_line
 
     def sync_vertical_scroll(self, *args) -> None:
         self.text.yview(*args)
@@ -91,4 +141,3 @@ class CodeEditor(ttk.Frame):
         self.text.insert("1.0", content)
         self.update_line_numbers()
         self.highlight_syntax()
-
