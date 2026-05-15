@@ -105,11 +105,14 @@ class AICodingIDE:
     def create_file_tree_context_menu(self) -> None:
         self.file_tree_menu_indexes = {
             "open": 0,
-            "rename": 5,
-            "delete": 6,
+            "copy_path": 2,
+            "rename": 7,
+            "delete": 8,
         }
         self.file_tree_menu = self.create_dark_menu(self.root)
         self.file_tree_menu.add_command(label="Open", command=self.open_selected_file)
+        self.file_tree_menu.add_separator()
+        self.file_tree_menu.add_command(label="Copy Path", command=self.copy_selected_item_path)
         self.file_tree_menu.add_separator()
         self.file_tree_menu.add_command(label="New File", command=self.create_file)
         self.file_tree_menu.add_command(label="New Folder", command=self.create_folder)
@@ -145,6 +148,16 @@ class AICodingIDE:
 
         self.file_tree_menu.tk_popup(event.x_root, event.y_root)
         self.file_tree_menu.grab_release()
+
+    def copy_selected_item_path(self) -> None:
+        selected_path = self.file_tree.selected_item_path()
+        if not selected_path:
+            return
+
+        path_text = str(selected_path.resolve())
+        self.root.clipboard_clear()
+        self.root.clipboard_append(path_text)
+        self.terminal.write(f"Copied path: {path_text}\n")
 
     def open_folder(self) -> None:
         folder = filedialog.askdirectory()
