@@ -57,6 +57,24 @@ def apply_theme(root: tk.Tk | None = None) -> None:
     )
     style.configure("TFrame", background=COLORS["app_background"])
     style.configure("Dark.TFrame", background=COLORS["app_background"])
+    style.configure(
+        "Toolbar.TFrame",
+        background=COLORS["tab_background"],
+        bordercolor=COLORS["border"],
+    )
+    style.configure(
+        "Toolbar.TButton",
+        background=COLORS["tab_background"],
+        foreground="white",
+        bordercolor=COLORS["border"],
+        focusthickness=0,
+        padding=[10, 6],
+    )
+    style.map(
+        "Toolbar.TButton",
+        background=[("active", COLORS["hover"]), ("pressed", COLORS["active"])],
+        foreground=[("active", "white"), ("pressed", "white")],
+    )
     style.configure("TPanedwindow", background=COLORS["app_background"])
     style.configure("Sash", background=COLORS["border"])
 

@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from .config import APP_TITLE, PYTHON_FILE_TYPES, WINDOW_SIZE
 from .file_tree import FileTree
@@ -22,8 +22,26 @@ class AICodingIDE:
         self.root.geometry(WINDOW_SIZE)
 
         apply_theme(self.root)
+        self.create_toolbar()
         self.create_layout()
         self.create_menu()
+
+    def create_toolbar(self) -> None:
+        toolbar = ttk.Frame(self.root, style="Toolbar.TFrame", padding=(8, 6))
+        toolbar.pack(side="top", fill="x")
+
+        buttons = (
+            ("Open Folder", self.open_folder),
+            ("Open File", self.open_file_dialog),
+            ("New File", self.create_file),
+            ("New Folder", self.create_folder),
+            ("Save", self.save_current_file),
+            ("Close File", self.close_current_file),
+        )
+
+        for label, command in buttons:
+            button = ttk.Button(toolbar, text=label, command=command, style="Toolbar.TButton")
+            button.pack(side="left", padx=(0, 6))
 
     def create_layout(self) -> None:
         self.main_pane = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
@@ -59,8 +77,10 @@ class AICodingIDE:
         file_menu = self.create_dark_menu(menubar)
         file_menu.add_command(label="Open Folder", command=self.open_folder)
         file_menu.add_command(label="Open File", command=self.open_file_dialog)
-        file_menu.add_command(label="New File", command=self.new_file)
+        file_menu.add_command(label="New File", command=self.create_file)
+        file_menu.add_command(label="New Folder", command=self.create_folder)
         file_menu.add_command(label="Save", command=self.save_current_file)
+        file_menu.add_command(label="Close File", command=self.close_current_file)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.quit)
         menubar.add_cascade(label="File", menu=file_menu)
@@ -102,6 +122,55 @@ class AICodingIDE:
         editor = CodeEditor(self.notebook)
         self.notebook.add(editor, text=editor.display_name)
         self.notebook.select(editor)
+
+    def create_file(self) -> None:
+        target_directory = self.file_tree.selected_directory()
+        if not target_directory:
+            self.new_file()
+            return
+
+        filename = simpledialog.askstring("New File", "File name:")
+        if not filename:
+            return
+
+        filepath = target_directory / filename
+        if filepath.exists():
+            messagebox.showwarning("Warning", "A file or folder with that name already exists.")
+            return
+
+        try:
+            filepath.touch()
+        except OSError as error:
+            messagebox.showerror("Error", str(error))
+            return
+
+        self.file_tree.refresh()
+        self.open_file(filepath)
+        self.terminal.write(f"Created file: {filepath}\n")
+
+    def create_folder(self) -> None:
+        target_directory = self.file_tree.selected_directory()
+        if not target_directory:
+            messagebox.showwarning("Warning", "Open a folder first.")
+            return
+
+        folder_name = simpledialog.askstring("New Folder", "Folder name:")
+        if not folder_name:
+            return
+
+        folder_path = target_directory / folder_name
+        if folder_path.exists():
+            messagebox.showwarning("Warning", "A file or folder with that name already exists.")
+            return
+
+        try:
+            folder_path.mkdir()
+        except OSError as error:
+            messagebox.showerror("Error", str(error))
+            return
+
+        self.file_tree.refresh()
+        self.terminal.write(f"Created folder: {folder_path}\n")
 
     def open_file(self, filepath: str | Path) -> None:
         path = Path(filepath)
@@ -146,6 +215,16 @@ class AICodingIDE:
         self.notebook.tab(editor, text=editor.display_name)
         self.terminal.write(f"Saved: {editor.filepath}\n")
         return True
+
+    def close_current_file(self) -> None:
+        current = self.notebook.select()
+        if not current:
+            return
+
+        editor = self.get_current_editor()
+        display_name = editor.display_name if editor else "file"
+        self.notebook.forget(current)
+        self.terminal.write(f"Closed: {display_name}\n")
 
     def run_current_file(self) -> None:
         editor = self.get_current_editor()
