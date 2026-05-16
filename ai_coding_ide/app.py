@@ -1,5 +1,5 @@
 """Main application shell."""
-
+# add simple debuggings and loggings
 from __future__ import annotations
 
 import tkinter as tk
