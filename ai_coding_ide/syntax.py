@@ -1,7 +1,8 @@
 """Simple Python syntax highlighting rules."""
-
+# add more syntaxt highlights
 from __future__ import annotations
 
+# update soon simple debugging
 import keyword
 import re
 import tkinter as tk
