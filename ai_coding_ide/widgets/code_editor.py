@@ -1,5 +1,9 @@
 """Code editor widget with line numbers and syntax highlighting."""
-
+# a ui for ai code comaprison 
+# implement my own ai coding agent 
+# before applying  it must be accepted before updating it 
+# on comapring it must highlight what chabge from code and the ai generated code 
+.
 from __future__ import annotations
 
 import tkinter as tk
