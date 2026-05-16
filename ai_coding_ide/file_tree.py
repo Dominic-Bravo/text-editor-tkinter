@@ -1,5 +1,6 @@
 """Project explorer helpers."""
-
+# update explorer mak eit more comprehensive
+# add simple icons or svg for each folder
 from __future__ import annotations
 
 from pathlib import Path
